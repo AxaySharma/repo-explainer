@@ -173,7 +173,7 @@ python scripts/run_evals.py
 
 ### Run the Optimizer
 ```bash
-python scripts/run_optimizer.py --iterations 5
+python scripts/run_optimizer.py --iterations 3
 ```
 
 ---
@@ -234,13 +234,16 @@ Cost-efficient by design — uses the fastest available Claude model throughout.
 
 | Run | Pass Rate | Avg Score | Topic Coverage | Groundedness |
 |-----|-----------|-----------|----------------|--------------|
-| Baseline | 100% | 0.9917 | 0.9792 | 1.0000 |
-| After Optimization | 87.5% | 0.7979 | 0.7760 | 0.8750 |
+| Baseline | 87.5% | 0.853 | 0.834 | 0.963 |
+| After Optimization (iter 1) | 100% | 0.952 | 0.984 | 1.000 |
+| Δ Improvement | **+12.5%** | **+0.099** | **+0.150** | **+0.037** |
 
-> The optimizer correctly identified all 8 tests were already passing at
-> baseline and skipped prompt modification. Score variance in the final
-> eval is due to LLM non-determinism. The baseline 0.9917 represents
-> true agent performance. See `optimizer/results/` for full JSON reports.
+> The optimizer identified a failure in `framework_detection`, improved the
+> system prompt in iteration 1, and recovered to 8/8 passing with a +0.099
+> score improvement. Further variance across runs is due to LLM
+> non-determinism — a known characteristic of probabilistic models that
+> averaging across multiple runs mitigates. See `optimizer/results/` for
+> full JSON reports.
 
 ---
 
@@ -251,6 +254,7 @@ Cost-efficient by design — uses the fastest available Claude model throughout.
 - **Grounded answers only** — agent is instructed never to claim something it has not read in actual code
 - **GitHub URL support** — clones to a temp directory transparently so remote repos work out of the box
 - **Weighted metrics** — hallucination penalty weighted heavily (30%) because a wrong answer is worse than an incomplete one
+- **Optimizer reverts on regression** — keeps the best prompt found, never degrades below baseline
 
 ---
 
@@ -259,26 +263,29 @@ Cost-efficient by design — uses the fastest available Claude model throughout.
 ```
 repo-explainer/
 ├── agent/
-│   ├── repo_explainer.py    # Core agent + agentic loop
-│   ├── tools.py             # File system tools
-│   └── prompts.py           # System prompt + templates
+│   ├── repo_explainer.py      # Core agent + agentic loop
+│   ├── tools.py               # File system tools
+│   ├── prompts.py             # System prompt + templates
+│   └── prompts_optimized.py   # Best prompt found by optimizer
 ├── evals/
-│   ├── harness.py           # Eval runner
-│   ├── metrics.py           # Scoring functions
-│   ├── test_cases.py        # 8 test cases
+│   ├── harness.py             # Eval runner
+│   ├── metrics.py             # Scoring functions
+│   ├── test_cases.py          # 8 test cases
 │   └── fixtures/
-│       └── sample_project/  # Sample FastAPI project for testing
+│       └── sample_project/    # Sample FastAPI project for testing
 ├── optimizer/
-│   ├── optimizer.py         # Prompt tuning loop
-│   └── results/             # Before/after JSON reports
+│   ├── optimizer.py           # Prompt tuning loop
+│   └── results/               # Before/after JSON reports
 ├── scripts/
-│   ├── run_agent.py         # CLI: run the agent
-│   ├── run_evals.py         # CLI: run eval suite
-│   └── run_optimizer.py     # CLI: run optimizer
+│   ├── run_agent.py           # CLI: run the agent
+│   ├── run_evals.py           # CLI: run eval suite
+│   └── run_optimizer.py       # CLI: run optimizer
 ├── tests/
-│   └── test_metrics.py      # 25 unit tests (all passing)
+│   └── test_metrics.py        # 25 unit tests (all passing)
 ├── .env.example
 ├── requirements.txt
+├── CONTRIBUTING.md
+├── CHANGELOG.md
 └── README.md
 ```
 

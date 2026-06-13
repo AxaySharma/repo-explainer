@@ -1,17 +1,19 @@
 # 🔍 Repo Explainer Agent
 
-> An agentic AI system that reads any codebase, maps its architecture, and answers questions about how it works — built on the Claude Agent SDK.
+> Point it at any codebase — local or GitHub URL — and ask it anything. It maps the architecture, reads the code, and gives you grounded answers.
 
 ---
 
 ## Overview
 
-It demonstrates three pillars of production-grade agentic AI engineering:
+Repo Explainer is an agentic AI system built on the **Claude Agent SDK**. It uses multi-step reasoning and file-system tools to deeply understand any codebase and answer natural language questions about it.
+
+It is built around three pillars:
 
 | Pillar | What it does |
 |--------|-------------|
-| 🤖 **Agent** | Multi-step reasoning agent using Claude Agent SDK — reads files, searches code, maps dependencies |
-| 📊 **Eval Harness** | Systematic test suite with 8 test cases and 4 weighted metrics to measure agent quality |
+| 🤖 **Agent** | Multi-step reasoning agent — reads files, searches code, maps dependencies, synthesizes answers |
+| 📊 **Eval Harness** | Systematic test suite with 8 test cases and 4 weighted metrics to measure answer quality |
 | ⚡ **Optimizer** | Automated prompt tuning loop that uses eval scores to iteratively improve the agent |
 
 ---
@@ -34,7 +36,7 @@ It demonstrates three pillars of production-grade agentic AI engineering:
 │  │prompts.py   │     │  execute → send result →  │   │
 │  └─────────────┘     │  repeat → final answer    │   │
 │                      └──────────────────────────-┘   │
-└─────────────────────────────────────────────────────-┘
+└──────────────────────────────────────────────────────┘
                       │
 ┌─────────────────────▼───────────────────────────────┐
 │                    Tools Layer                       │
@@ -90,7 +92,7 @@ cp .env.example .env
 ### Running with Claude Code (recommended — no API cost)
 ```bash
 # Claude Code routes through your Pro/Max subscription
-# Just run via Claude Code and it handles auth automatically
+# Just run via Claude Code — it handles auth automatically
 claude "python scripts/run_agent.py --repo . --question 'How does this project work?'"
 ```
 
@@ -98,12 +100,17 @@ claude "python scripts/run_agent.py --repo . --question 'How does this project w
 
 ## Usage
 
-### 1. Run the Agent
+### Ask about a local repo
 ```bash
 python scripts/run_agent.py --repo /path/to/any/repo --question "How does authentication work?"
 ```
 
-**Example output:**
+### Ask about a GitHub repo (no cloning needed)
+```bash
+python scripts/run_agent.py --repo https://github.com/any/public-repo --question "What is the overall architecture?"
+```
+
+### Example output
 ```
 🔍 Repo Explainer Agent
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -113,17 +120,19 @@ python scripts/run_agent.py --repo /path/to/any/repo --question "How does authen
 🤖 Thinking...
 
 ✅ Answer:
-The authentication system uses JWT tokens...
+The authentication system uses JWT tokens issued at /auth/login.
+Tokens are validated in auth.py via the decode_token() function,
+which is called by the require_auth decorator applied to protected routes.
 
 📊 Stats: 4 iterations | Tools used: get_file_tree, read_file, search_code
 ```
 
-### 2. Run Evals
+### Run the Eval Suite
 ```bash
 python scripts/run_evals.py
 ```
 
-### 3. Run Optimizer
+### Run the Optimizer
 ```bash
 python scripts/run_optimizer.py --iterations 5
 ```
@@ -134,11 +143,11 @@ python scripts/run_optimizer.py --iterations 5
 
 The agent runs a proper **agentic loop** — not a single-shot API call:
 
-1. Receives repo path + question
+1. Receives repo path or GitHub URL + question
 2. Always starts with `get_file_tree` + `detect_language_and_framework`
 3. Reads relevant files, searches for patterns
-4. Synthesizes a grounded answer from actual code
-5. Stops when it has enough context (max 10 iterations)
+4. Synthesizes a grounded answer from actual code it has read
+5. Stops when it has sufficient context (max 10 iterations)
 
 **Tools available:**
 
@@ -154,16 +163,16 @@ The agent runs a proper **agentic loop** — not a single-shot API call:
 
 ## Eval Harness
 
-8 test cases against a sample FastAPI project in `evals/fixtures/sample_project/`.
+8 test cases run against a sample FastAPI project in `evals/fixtures/sample_project/`.
 
 **Metrics (weighted):**
 
 | Metric | Weight | What it measures |
 |--------|--------|-----------------|
 | Topic Coverage | 40% | Are expected concepts present in the answer? |
-| Hallucination Penalty | 30% | Does the answer contain wrong information? |
+| Hallucination Penalty | 30% | Does the answer contain fabricated information? |
 | Answer Length | 15% | Is the answer appropriately detailed? |
-| Groundedness | 15% | Did the agent actually read the code? |
+| Groundedness | 15% | Did the agent actually read the code to answer? |
 
 A test case **passes** if overall score ≥ 0.6.
 
@@ -171,11 +180,11 @@ A test case **passes** if overall score ≥ 0.6.
 
 ## Optimizer
 
-The optimizer runs a **prompt tuning loop**:
+The optimizer runs an automated **prompt tuning loop**:
 
 ```
-baseline eval → score failed cases → ask Claude to improve prompt
-→ re-eval → keep if better → repeat N times → report best prompt
+baseline eval → identify failed cases → ask Claude to improve system prompt
+→ re-run evals → keep if better → revert if worse → repeat N times
 ```
 
 Uses `claude-haiku-4-5-20251001` for cost efficiency at every stage.
@@ -190,25 +199,17 @@ Uses `claude-haiku-4-5-20251001` for cost efficiency at every stage.
 | After Optimization | — | — | — | — |
 | Δ Improvement | — | — | — | — |
 
-> Results will be filled in after running the optimizer. See `optimizer/results/` for full JSON reports.
+> Results populated after running the optimizer. See `optimizer/results/` for full JSON reports.
 
 ---
 
 ## Design Decisions
 
-- **Claude Agent SDK over raw API** — proper agentic loop with tool use, not a single-shot call
+- **Claude Agent SDK over raw API** — proper agentic loop with tool use, not a single-shot prompt
 - **Haiku for cost efficiency** — fast iteration on evals and optimizer without burning credits
-- **Grounded answers only** — agent is instructed to never claim something it hasn't read in the code
-- **Weighted metrics** — hallucination penalty weighted heavily (30%) because wrong answers are worse than incomplete ones
-
----
-
-## What I'd Do With More Time
-
-- Add semantic search over code (embeddings) for large repos
-- Support remote GitHub URLs, not just local paths
-- Add a web UI for interactive Q&A
-- Expand eval set to cover more edge cases (monorepos, polyglot projects)
+- **Grounded answers only** — agent is instructed never to claim something it has not read in the actual code
+- **GitHub URL support** — clones to a temp directory transparently so remote repos work out of the box
+- **Weighted metrics** — hallucination penalty weighted heavily (30%) because a wrong answer is worse than an incomplete one
 
 ---
 
@@ -225,7 +226,7 @@ repo-explainer/
 │   ├── metrics.py           # Scoring functions
 │   ├── test_cases.py        # 8 test cases
 │   └── fixtures/
-│       └── sample_project/  # Fake FastAPI project for testing
+│       └── sample_project/  # Sample FastAPI project for testing
 ├── optimizer/
 │   ├── optimizer.py         # Prompt tuning loop
 │   └── results/             # Before/after JSON reports
@@ -240,4 +241,4 @@ repo-explainer/
 
 ---
 
-*Built with ❤️ using Claude Agent SDK*
+*Built with the Claude Agent SDK · MIT License*

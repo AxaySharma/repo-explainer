@@ -1,5 +1,7 @@
 # 🔍 Repo Explainer Agent
 
+![CI](https://github.com/AxaySharma/repo-explainer/actions/workflows/ci.yml/badge.svg)
+
 > Point it at any codebase — local or GitHub URL — and ask it anything. It maps the architecture, reads the code, and gives you grounded answers.
 
 ---

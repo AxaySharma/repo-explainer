@@ -116,7 +116,7 @@ def run_agent(
             
             # Make API request to Claude
             response = client.messages.create(
-                model="claude-haiku-4-5-20251001",
+                model="anthropic/claude-3.5-haiku",
                 max_tokens=4096,
                 system=sys_prompt,
                 tools=TOOL_DEFINITIONS,
